@@ -1,0 +1,16 @@
+{
+  "KPlugin": {
+    "Authors": [
+      {
+        "Email": "max8rr8@gmail.com",
+        "Name": "Max Ramanouski"
+      }
+    ],
+    "Description": "Plugin to control audacious",
+    "EnabledByDefault": true,
+    "Icon": "audacious",
+    "License": "MIT",
+    "Name": "Audacious Control",
+    "Version": "0.1"
+  }
+}
