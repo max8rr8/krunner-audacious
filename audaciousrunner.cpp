@@ -2,8 +2,10 @@
 #include <QDBusReply>
 #include <climits>
 #include <krunner/querymatch.h>
+#include <qchar.h>
 #include <qdbusreply.h>
 #include <qnamespace.h>
+#include <qpair.h>
 #include <qreadwritelock.h>
 #include <qstringliteral.h>
 #include <qvariant.h>
@@ -70,10 +72,19 @@ void AudaciousRunner::match(Plasma::RunnerContext &context) {
 
   QReadLocker locker(&m_lock);
 
-  QString term = context.query();
-  term = term.mid(triggerWord.length()).trimmed();
+  QString query = context.query();
+  query = query.mid(triggerWord.length()).trimmed();
 
   QList<Plasma::QueryMatch> matches;
+
+  GenerateVolMatches(query, matches);
+  GeneratePlayMatches(query, matches);
+
+  context.addMatches(matches);
+}
+
+void AudaciousRunner::GeneratePlayMatches(QString &query,
+                                          QList<Plasma::QueryMatch> &matches) {
   int delta = 0;
   int left = m_playlistLen;
 
@@ -86,7 +97,7 @@ void AudaciousRunner::match(Plasma::RunnerContext &context) {
 
     QString songName = getSong(id);
 
-    if (songName.contains(term, Qt::CaseInsensitive)) {
+    if (songName.contains(query, Qt::CaseInsensitive)) {
       Plasma::QueryMatch match(this);
       match.setData(QList<QVariant>{RunnerAction::Jump, id});
       match.setId(QStringLiteral("audacious://play/") + QString::number(id));
@@ -103,7 +114,48 @@ void AudaciousRunner::match(Plasma::RunnerContext &context) {
       delta++;
     left--;
   }
-  context.addMatches(matches);
+}
+
+void AudaciousRunner::GenerateVolMatches(QString &query,
+                                         QList<Plasma::QueryMatch> &matches) {
+  if (query.size() < 2)
+    return;
+
+  QStringView volquery;
+
+  if (query.startsWith(QStringLiteral("vol"))) {
+    volquery = QStringView(query).mid(3).trimmed();
+  } else if (query.at(0) == QLatin1Char('v') && !query.at(1).isLetter()) {
+    volquery = QStringView(query).mid(1).trimmed();
+  } else {
+    return;
+  }
+
+  bool is_delta = volquery.startsWith(QLatin1Char('+')) ||
+                  volquery.startsWith(QLatin1Char('-'));
+
+  bool is_ok = false;
+  int volume = volquery.toInt(&is_ok);
+  if (!is_ok)
+    return;
+
+  QDBusReply<int> currentVolumeReply = m_dbus.call(QStringLiteral("Volume"));
+  if (!currentVolumeReply.isValid())
+    return;
+  int currentVolume = currentVolumeReply.value();
+
+  int next_volume = volume;
+  if (is_delta)
+    next_volume += currentVolume;
+
+  Plasma::QueryMatch match(this);
+  match.setData(QList<QVariant>{RunnerAction::Volume, next_volume});
+  match.setId(QStringLiteral("audacious://volume/") +
+              QString::number(next_volume));
+  match.setType(Plasma::QueryMatch::CompletionMatch);
+  match.setText(QStringLiteral("Set volume to: %2").arg(next_volume));
+  match.setRelevance(1);
+  matches.append(match);
 }
 
 void AudaciousRunner::run(const Plasma::RunnerContext &context,
@@ -115,5 +167,8 @@ void AudaciousRunner::run(const Plasma::RunnerContext &context,
   if (action == RunnerAction::Jump) {
     int id = data[1].value<int>();
     m_dbus.call(QStringLiteral("Jump"), (uint)id);
+  } else if (action == RunnerAction::Volume) {
+    int volume = data[1].value<int>();
+    m_dbus.call(QStringLiteral("SetVolume"), volume, volume);
   }
 }

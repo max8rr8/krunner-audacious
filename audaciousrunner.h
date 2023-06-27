@@ -18,13 +18,16 @@ public:
   void run(const Plasma::RunnerContext &context,
            const Plasma::QueryMatch &match) override;
 
-  enum RunnerAction { Jump };
+  enum RunnerAction { Jump, Volume };
 
   Q_ENUM(RunnerAction);
 
 private:
   QString getSong(uint id);
   bool ensurePlaylist();
+
+  void GeneratePlayMatches(QString &query, QList<Plasma::QueryMatch> &matches);
+  void GenerateVolMatches(QString &query, QList<Plasma::QueryMatch> &matches);
 
 protected:
   void init() override;
