@@ -1,7 +1,6 @@
 #include "audaciousrunner.h"
 #include <QDBusReply>
 #include <climits>
-#include <krunner/querymatch.h>
 #include <qchar.h>
 #include <qdbusreply.h>
 #include <qnamespace.h>
@@ -20,21 +19,17 @@ const QString audaciousPath = QStringLiteral("/org/atheme/audacious");
 const QString audaciousInterface = QStringLiteral("org.atheme.audacious");
 const QString triggerWord = QStringLiteral("adcs");
 
-AudaciousRunner::AudaciousRunner(QObject *parent, const KPluginMetaData &data,
-                                 const QVariantList &args)
-    : AbstractRunner(parent, data, args),
-      m_dbus(audaciousService, audaciousPath, audaciousInterface) {
+AudaciousRunner::AudaciousRunner(QObject *parent, const KPluginMetaData &data)
+    : AbstractRunner(parent, data)
+    , m_dbus(audaciousService, audaciousPath, audaciousInterface)
+{
+    setObjectName(QStringLiteral("Audacious Runner"));
 
-  setObjectName(QStringLiteral("Audacious Runner"));
-  setPriority(LowPriority);
+    QList<KRunner::RunnerSyntax> syntaxes;
+    syntaxes << KRunner::RunnerSyntax(QStringLiteral("%1 :q:").arg(triggerWord), QStringLiteral("Controll audacious player."));
 
-  QList<Plasma::RunnerSyntax> syntaxes;
-  syntaxes << Plasma::RunnerSyntax(
-      QStringLiteral("%1 :q:").arg(triggerWord),
-      QStringLiteral("Controll audacious player."));
-
-  setSyntaxes(syntaxes);
-  setTriggerWords({triggerWord});
+    setSyntaxes(syntaxes);
+    setTriggerWords({triggerWord});
 }
 
 bool AudaciousRunner::ensurePlaylist() {
@@ -66,7 +61,8 @@ QString AudaciousRunner::getSong(uint id) {
   return song;
 }
 
-void AudaciousRunner::match(Plasma::RunnerContext &context) {
+void AudaciousRunner::match(KRunner::RunnerContext &context)
+{
   if (!ensurePlaylist())
     return;
 
@@ -75,16 +71,17 @@ void AudaciousRunner::match(Plasma::RunnerContext &context) {
   QString query = context.query();
   query = query.mid(triggerWord.length()).trimmed();
 
-  QList<Plasma::QueryMatch> matches;
+  QList<KRunner::QueryMatch> matches;
 
   GenerateVolMatches(query, matches);
   GeneratePlayMatches(query, matches);
 
+  qDebug() << "Ok";
   context.addMatches(matches);
 }
 
-void AudaciousRunner::GeneratePlayMatches(QString &query,
-                                          QList<Plasma::QueryMatch> &matches) {
+void AudaciousRunner::GeneratePlayMatches(QString &query, QList<KRunner::QueryMatch> &matches)
+{
   int delta = 0;
   int left = m_playlistLen;
 
@@ -98,10 +95,10 @@ void AudaciousRunner::GeneratePlayMatches(QString &query,
     QString songName = getSong(id);
 
     if (songName.contains(query, Qt::CaseInsensitive)) {
-      Plasma::QueryMatch match(this);
+      KRunner::QueryMatch match(this);
       match.setData(QList<QVariant>{RunnerAction::Jump, id});
       match.setId(QStringLiteral("audacious://play/") + QString::number(id));
-      match.setType(Plasma::QueryMatch::CompletionMatch);
+      match.setCategoryRelevance(KRunner::QueryMatch::CategoryRelevance::High);
       match.setText(QStringLiteral("%1: %2")
                         .arg(QString::number(id + 1), 4, QLatin1Char('0'))
                         .arg(songName));
@@ -116,8 +113,8 @@ void AudaciousRunner::GeneratePlayMatches(QString &query,
   }
 }
 
-void AudaciousRunner::GenerateVolMatches(QString &query,
-                                         QList<Plasma::QueryMatch> &matches) {
+void AudaciousRunner::GenerateVolMatches(QString &query, QList<KRunner::QueryMatch> &matches)
+{
   if (query.size() < 2)
     return;
 
@@ -148,18 +145,18 @@ void AudaciousRunner::GenerateVolMatches(QString &query,
   if (is_delta)
     next_volume += currentVolume;
 
-  Plasma::QueryMatch match(this);
+  KRunner::QueryMatch match(this);
   match.setData(QList<QVariant>{RunnerAction::Volume, next_volume});
   match.setId(QStringLiteral("audacious://volume/") +
               QString::number(next_volume));
-  match.setType(Plasma::QueryMatch::CompletionMatch);
+  match.setCategoryRelevance(KRunner::QueryMatch::CategoryRelevance::High);
   match.setText(QStringLiteral("Set volume to: %2").arg(next_volume));
   match.setRelevance(1);
   matches.append(match);
 }
 
-void AudaciousRunner::run(const Plasma::RunnerContext &context,
-                          const Plasma::QueryMatch &match) {
+void AudaciousRunner::run(const KRunner::RunnerContext &context, const KRunner::QueryMatch &match)
+{
   context.ignoreCurrentMatchForHistory();
   QList<QVariant> data = match.data().toList();
   RunnerAction action = data[0].value<RunnerAction>();

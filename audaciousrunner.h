@@ -1,22 +1,23 @@
 #pragma once
 
 #include <KRunner/AbstractRunner>
+#include <KRunner/Action>
+
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QReadWriteLock>
 #include <QString>
 #include <QVector>
 
-class AudaciousRunner : public Plasma::AbstractRunner {
+class AudaciousRunner : public KRunner::AbstractRunner {
   Q_OBJECT
 
 public:
-  AudaciousRunner(QObject *parent, const KPluginMetaData &data,
-                  const QVariantList &args);
+  AudaciousRunner(QObject *parent, const KPluginMetaData &data);
 
-  void match(Plasma::RunnerContext &context) override;
-  void run(const Plasma::RunnerContext &context,
-           const Plasma::QueryMatch &match) override;
+  void match(KRunner::RunnerContext &context) override;
+  void run(const KRunner::RunnerContext &context,
+           const KRunner::QueryMatch &match) override;
 
   enum RunnerAction { Jump, Volume };
 
@@ -26,8 +27,8 @@ private:
   QString getSong(uint id);
   bool ensurePlaylist();
 
-  void GeneratePlayMatches(QString &query, QList<Plasma::QueryMatch> &matches);
-  void GenerateVolMatches(QString &query, QList<Plasma::QueryMatch> &matches);
+  void GeneratePlayMatches(QString &query, QList<KRunner::QueryMatch> &matches);
+  void GenerateVolMatches(QString &query, QList<KRunner::QueryMatch> &matches);
 
 protected:
   void init() override;
