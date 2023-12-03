@@ -4,6 +4,9 @@
 
 This is simple(currently) that allows you to use krunner to switch between tracks. Type adcs and then start typing track name, select track and press enter track should now be selected.
 
+> This runner is built for Plasma 6. 
+> If you are using Plasma 5, use branch [plasma5](https://github.com/max8rr8/krunner-audacious/tree/plasma5)
+
 ## Usage
 
 * Use `adcs <song_name>` to find song and play song by name.
